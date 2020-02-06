@@ -224,7 +224,7 @@ class Loader(BaseLoader):
         # Create material objects
         for meta_mat in self.gltf.materials:
             mat = Material(meta_mat.name)
-            mat.color = meta_mat.baseColorFactor
+            mat.color = meta_mat.baseColorFactor or [1.0, 1.0, 1.0, 1.0]
             mat.double_sided = meta_mat.doubleSided
 
             if meta_mat.baseColorTexture is not None:
@@ -649,19 +649,26 @@ class GLTFNode:
         self.rotation = data.get('rotation')
         self.scale = data.get('scale')
 
-        if self.matrix is None:
-            self.matrix = matrix44.create_identity()
+
+        if self.matrix:
+            self.matrix = Matrix44(self.matrix)
+        else:
+            self.matrix = Matrix44.identity()
 
         if self.translation is not None:
-            self.matrix = matrix44.create_from_translation(self.translation)
+            self.matrix = self.matrix * Matrix44.from_translation(self.translation)
 
         if self.rotation is not None:
-            quat = quaternion.create(self.rotation[0], self.rotation[1], self.rotation[2], self.rotation[3])
-            mat = matrix44.create_from_quaternion(quat)
-            self.matrix = matrix44.multiply(mat, self.matrix)
+            quat = quaternion.create(
+                x=self.rotation[0],
+                y=self.rotation[1],
+                z=self.rotation[2],
+                w=self.rotation[3],
+            )
+            self.matrix = self.matrix *  Matrix44.from_quaternion(quat).transpose() 
 
         if self.scale is not None:
-            self.matrix = matrix44.multiply(matrix44.create_from_scale(self.scale), self.matrix)
+            self.matrix = self.matrix * Matrix44.from_scale(self.scale)
 
     @property
     def has_children(self):
