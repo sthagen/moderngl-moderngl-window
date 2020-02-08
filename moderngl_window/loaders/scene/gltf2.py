@@ -8,7 +8,7 @@ from collections import namedtuple
 
 import numpy
 from PIL import Image
-from pyrr import Matrix44, matrix44, quaternion
+from pyrr import Matrix44, quaternion
 
 import moderngl
 import moderngl_window
@@ -537,8 +537,8 @@ class GLTFAccessor:
         self.byteOffset = data.get('byteOffset') or 0
         self.componentType = COMPONENT_TYPE[data['componentType']]
         self.count = data.get('count')
-        self.min = numpy.array(data.get('min') or [-0.5, -0.5, -0.5], dtype=numpy.float32)
-        self.max = numpy.array(data.get('max') or [0.5, 0.5, 0.5], dtype=numpy.float32)
+        self.min = numpy.array(data.get('min') or [-0.5, -0.5, -0.5], dtype='f4')
+        self.max = numpy.array(data.get('max') or [0.5, 0.5, 0.5], dtype='f4')
         self.type = data.get('type')
 
     def read(self):
@@ -649,7 +649,6 @@ class GLTFNode:
         self.rotation = data.get('rotation')
         self.scale = data.get('scale')
 
-
         if self.matrix:
             self.matrix = Matrix44(self.matrix)
         else:
@@ -665,7 +664,7 @@ class GLTFNode:
                 z=self.rotation[2],
                 w=self.rotation[3],
             )
-            self.matrix = self.matrix *  Matrix44.from_quaternion(quat).transpose() 
+            self.matrix = self.matrix * Matrix44.from_quaternion(quat).transpose()
 
         if self.scale is not None:
             self.matrix = self.matrix * Matrix44.from_scale(self.scale)
