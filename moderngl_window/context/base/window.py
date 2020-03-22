@@ -1026,8 +1026,51 @@ class WindowConfig:
             **kwargs
         ))
 
+    def load_texture_cube(
+            self,
+            pos_x: str = None, pos_y: str = None, pos_z: str = None,
+            neg_x: str = None, neg_y: str = None, neg_z: str = None,
+            flip=False,
+            mipmap=False,
+            mipmap_levels: Tuple[int, int] = None,
+            anisotropy=1.0,
+            **kwargs) -> moderngl.TextureCube:
+        """Loads a texture cube.
+
+        Keyword Args:
+            pos_x (str): Path to texture representing positive x face
+            pos_y (str): Path to texture representing positive y face
+            pos_z (str): Path to texture representing positive z face
+            neg_x (str): Path to texture representing negative x face
+            neg_y (str): Path to texture representing negative y face
+            neg_z (str): Path to texture representing negative z face
+            flip (boolean): Flip the image horizontally
+            mipmap (bool): Generate mipmaps. Will generate max possible levels unless
+                           `mipmap_levels` is defined.
+            mipmap_levels (tuple): (base, max_level) controlling mipmap generation.
+                                   When defined the `mipmap` parameter is automatically `True`
+            anisotropy (float): Number of samples for anisotropic filtering
+            **kwargs: Additional parameters to TextureDescription
+        Returns:
+            moderngl.TextureCube: Texture instance
+        """
+        return resources.textures.load(TextureDescription(
+            pos_x=pos_x,
+            pos_y=pos_y,
+            pos_z=pos_z,
+            neg_x=neg_x,
+            neg_y=neg_y,
+            neg_z=neg_z,
+            flip=flip,
+            mipmap=mipmap,
+            mipmap_levels=mipmap_levels,
+            anisotropy=anisotropy,
+            kind='cube',
+            **kwargs,
+        ))
+
     def load_program(self, path=None, vertex_shader=None, geometry_shader=None, fragment_shader=None,
-                     tess_control_shader=None, tess_evaluation_shader=None) -> moderngl.Program:
+                     tess_control_shader=None, tess_evaluation_shader=None, defines: dict = None) -> moderngl.Program:
         """Loads a shader program.
 
         Note that `path` should only be used if all shaders are defined
@@ -1040,6 +1083,7 @@ class WindowConfig:
             fragment_shader (str): Path to fragment shader
             tess_control_shader (str): Path to tessellation control shader
             tess_evaluation_shader (str): Path to tessellation eval shader
+            defines (dict): ``#define`` values to replace in the shader source
         Returns:
             moderngl.Program: The program instance
         """
@@ -1051,7 +1095,21 @@ class WindowConfig:
                 fragment_shader=fragment_shader,
                 tess_control_shader=tess_control_shader,
                 tess_evaluation_shader=tess_evaluation_shader,
+                defines=defines,
             )
+        )
+
+    def load_compute_shader(self, path, defines: dict = None, **kwargs) -> moderngl.ComputeShader:
+        """Loads a compute shader.
+
+        Args:
+            path (str): Path to a single glsl file
+            defines (dict): ``#define`` values to replace in the shader source
+        Returns:
+            moderngl.ComputeShader: The compute shader
+        """
+        return resources.programs.load(
+            ProgramDescription(compute_shader=path, defines=defines, **kwargs)
         )
 
     def load_text(self, path: str, **kwargs) -> str:

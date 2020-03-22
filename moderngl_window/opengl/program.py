@@ -1,4 +1,7 @@
-from typing import Tuple, Union
+"""
+Helper classes for loading shader
+"""
+from typing import List, Tuple, Union
 
 import moderngl
 import moderngl_window
@@ -36,7 +39,8 @@ class ProgramShaders:
         instance.vertex_source = ShaderSource(
             VERTEX_SHADER,
             meta.path or meta.vertex_shader,
-            source
+            source,
+            defines=meta.defines,
         )
 
         if GEOMETRY_SHADER in source:
@@ -44,6 +48,7 @@ class ProgramShaders:
                 GEOMETRY_SHADER,
                 meta.path or meta.geometry_shader,
                 source,
+                defines=meta.defines,
             )
 
         if FRAGMENT_SHADER in source:
@@ -51,6 +56,7 @@ class ProgramShaders:
                 FRAGMENT_SHADER,
                 meta.path or meta.fragment_shader,
                 source,
+                defines=meta.defines,
             )
 
         if TESS_CONTROL_SHADER in source:
@@ -58,6 +64,7 @@ class ProgramShaders:
                 TESS_CONTROL_SHADER,
                 meta.path or meta.tess_control_shader,
                 source,
+                defines=meta.defines,
             )
 
         if TESS_EVALUATION_SHADER in source:
@@ -65,6 +72,7 @@ class ProgramShaders:
                 TESS_EVALUATION_SHADER,
                 meta.path or meta.tess_evaluation_shader,
                 source,
+                defines=meta.defines,
             )
 
         return instance
@@ -78,6 +86,7 @@ class ProgramShaders:
             VERTEX_SHADER,
             meta.path or meta.vertex_shader,
             vertex_source,
+            defines=meta.defines,
         )
 
         if geometry_source:
@@ -85,6 +94,7 @@ class ProgramShaders:
                 GEOMETRY_SHADER,
                 meta.path or meta.geometry_shader,
                 geometry_source,
+                defines=meta.defines,
             )
 
         if fragment_source:
@@ -92,6 +102,7 @@ class ProgramShaders:
                 FRAGMENT_SHADER,
                 meta.path or meta.fragment_shader,
                 fragment_source,
+                defines=meta.defines,
             )
 
         if tess_control_source:
@@ -99,6 +110,7 @@ class ProgramShaders:
                 TESS_CONTROL_SHADER,
                 meta.path or meta.tess_control_shader,
                 tess_control_source,
+                defines=meta.defines,
             )
 
         if tess_evaluation_source:
@@ -106,6 +118,7 @@ class ProgramShaders:
                 TESS_EVALUATION_SHADER,
                 meta.path or meta.tess_control_shader,
                 tess_evaluation_source,
+                defines=meta.defines,
             )
 
         return instance
@@ -116,7 +129,8 @@ class ProgramShaders:
         instance.compute_shader_source = ShaderSource(
             COMPUTE_SHADER,
             meta.compute_shader,
-            compute_shader_source
+            compute_shader_source,
+            defines=meta.defines,
         )
         return instance
 
@@ -158,7 +172,7 @@ class ShaderSource:
     """
     Helper class representing a single shader type
     """
-    def __init__(self, shader_type: str, name: str, source: str):
+    def __init__(self, shader_type: str, name: str, source: str, defines: dict = None):
         self.type = shader_type
         self.name = name
         self.source = source.strip()
@@ -171,21 +185,44 @@ class ShaderSource:
                 "Missing #version in {}. A version must be defined in the first line".format(self.name),
             )
 
-        # Add preprocessors to source VERTEX_SHADER, FRAGMENT_SHADER etc.
+        self.apply_defines(defines)
+
+        # Inject source with shade type
         self.lines.insert(1, "#define {} 1".format(self.type))
+        self.lines.insert(2, "#line 2")
 
         self.source = '\n'.join(self.lines)
 
-    def find_out_attribs(self):
+    def apply_defines(self, defines: dict):
+        """Apply the configured define values"""
+        if not defines:
+            return
+
+        for nr, line in enumerate(self.lines):
+            line = line.strip()
+            if line.startswith('#define'):
+                try:
+                    name = line.split()[1]
+                    value = defines.get(name)
+                    if not value:
+                        continue
+
+                    self.lines[nr] = "#define {} {}".format(name, str(value))
+                except IndexError:
+                    pass
+
+    def find_out_attribs(self) -> List[str]:
         """
         Get all out attributes in the shader source.
 
-        :return: List of attribute names
+        Returns:
+            List[str]: List of out attribute names
         """
         names = []
         for line in self.lines:
             if line.strip().startswith("out "):
                 names.append(line.split()[2].replace(';', ''))
+
         return names
 
     def print(self):
