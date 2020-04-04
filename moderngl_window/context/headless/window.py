@@ -32,7 +32,7 @@ class Window(BaseWindow):
         self._ctx = moderngl.create_standalone_context(require=self.gl_version_code)
         self._fbo = self.ctx.framebuffer(
             color_attachments=self.ctx.texture(self.size, 4, samples=self._samples),
-            depth_attachment=self.ctx.depth_texture(self.size, samples=self.samples),
+            depth_attachment=self.ctx.depth_texture(self.size, samples=self._samples),
         )
         self.use()
 
@@ -60,9 +60,10 @@ class Window(BaseWindow):
         Placeholder. We currently don't do double buffering in headless mode.
         This may change in the future.
         """
-        # TODO: No double buffering currently
+        # NOTE: No double buffering currently
         self._frames += 1
+        self._ctx.finish()
 
     def destroy(self) -> None:
-        # TODO: A context can currently not be invalidated in ModernGL
-        pass
+        """Destroy the context"""
+        self._ctx.release()
