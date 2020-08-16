@@ -1,8 +1,59 @@
 # Changelog
 
-# 2.1.1
+## 2.2.3
 
-## Improvements:
+* imgui integration no longer relies on pyopengl
+* Bug: Properly parse `out` attributes with layout qualifiers
+* Bug: Do not cache system shaders at module level.
+  We now cache them in the context to better support multiple windows.
+* Bug: OrbitCameraWindow - Fixed radians/degree issue
+* Bug: A window can now be closed from inside `render()`
+
+## 2.2.2
+
+* Fixed several issues causing the window close callback not being called
+* Fixed incorrect mouse button mapping in mouse drag events
+
+## 2.2.1
+
+* imgui renderer now supports moderngl textures. This opens up for both
+  displaying images and animated framebuffer textures into imgui.
+* Scene: Fixed several issues related to shader assigning based on material properties.
+  This especially affected wavefront/obj files.
+* OrbitCamera: Fixed translation issue (@Leterax)
+* OrbitCamera: Now using degrees instead of radians (@Leterax)
+* Bumped pyglet version to minimum 1.5.6. This version
+  solves several issue with window events for MacBooks with Touch Bar
+
+## 2.2.0
+
+* `WindowConfig` now supports overriding the default arugment parser.
+  A classmethod `add_arguments` can be implemented to add additional
+  arguments. The parsed arguments are available in `self.argv`
+* Added in `Scene.draw_wireframe` rendering a scene in wire frame mode
+* `Scene.draw_bbox` now support passing in a `color`
+* `Scene` should now have better support for all the vertex formats
+  wavefront/obj files may have.
+* Addded `WindowConfig.clear_color` attribute so uses can control the
+  clear color of the screen. The value can be set to `None` to
+  disable screen clearing (@Leterax)
+* Added `OrbitCamera` (@Leterax)
+* Allow setting camera rotation (@Leterax)
+* `VAO` should now give better feedback if the buffers and program
+  attributes are not compatible
+* `ModernGLRenderer` (imgui renderer) should not rely on moderngl-window (@minuJeong)
+* `Scene` should now cache default shaders internally so they are not loaded
+  for every scene
+* Several typos in docs (@dawid-januszkiewicz)
+* `WindowConfig.load_compute_shader` missing in docs
+* Bumped pygame to `2.0.0.dev10`
+
+Thanks to @Leterax, @minuJeong and @dawid-januszkiewicz for the contributions to this release
+and @mtbouchard for input on `WindowConfig` and `Scene` changes.
+
+## 2.1.1
+
+### Improvements
 
 * Optimized the imgui renderer using `ctypes` instead of `numpy` for handling vertex data (@aforren1)
 * Added support for ALT key modifier in all window backends and other improvements to key handling (@OKaluza)
@@ -85,12 +136,12 @@ Resolved an issue with version constraints causing some dependencies to install 
 
 Bug fixes
 
-- SDL2 window now allows highdpi framebuffers when available
-- pygame2 window should only initialize the display module
+* SDL2 window now allows highdpi framebuffers when available
+* pygame2 window should only initialize the display module
 
 ## 2.0.0
 
-Breaking Changes
+### Breaking Changes
 
 * `mouse_position_event` signature has changed from `(x, y)` to `(x, y, dx, dy)`.
   This means you will also be getting the relative position change.
@@ -98,7 +149,7 @@ Breaking Changes
   This means you will also be getting the relative position change.
 * `KeyboardCamera.rot_state` now takes dx and dy instead of x and y
 
-Improvements
+### Improvements
 
 * Python 3.8 support (PySide2 will take a few more months. SDL2 has issues on windows)
 * Added pygame2 window

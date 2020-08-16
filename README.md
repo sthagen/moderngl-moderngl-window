@@ -2,7 +2,7 @@
 
 # moderngl-window
 
-A cross platform helper library for [ModernGL](https://github.com/moderngl/moderngl) making window
+A cross platform utility library for [ModernGL](https://github.com/moderngl/moderngl) making window
 creation and resource loading simple. It can also be used with PyOpenGL for
 rendering with the programmable pipeline.
 
@@ -136,6 +136,25 @@ Be sure to include what platforms are supported, install
 instructions, how you configure it in `moderngl-window` and
 of course a clear and concise description of what exactly
 your package provides.
+
+## Citation
+
+If you need to cite this repository in academic research:
+```txt
+@Online{Forselv2020,
+  author = {Einar Forselv},
+  title = {moderngl-window, a cross-platform windowing/utility library for ModernGL},
+  date = {2020-05-01},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/moderngl/moderngl-window}},
+  commit = {<insert hash if needed>}
+}
+```
+
+If commit hash is required this can be found per release here:
+https://github.com/moderngl/moderngl-window/releases
+
 
 ## Attributions
 

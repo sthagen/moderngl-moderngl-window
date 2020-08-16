@@ -77,6 +77,68 @@ class ShaderSourceTestCase(TestCase):
         self.assertTrue("#define NUM_THINGS 100" in shader.source)
         self.assertTrue("#define SCALE 2.0" in shader.source)
 
+    def test_define_compute(self):
+        """Injecting defines in compute shader"""
+        shader = program.ShaderSource(
+            program.COMPUTE_SHADER,
+            "compute.glsl",
+            """
+            #version 430
+            #define TEST 0
+            #define THING 0
+            layout (local_size_x = 1, local_size_y = 1) in;
+            layout (std430, binding = 1) buffer Input {
+                float v1[4];
+            };
+            layout (std430, binding = 2) buffer Output {
+                float v2[4];
+            };
+            uniform float mul;
+            uniform vec4 add;
+            void main() {
+                v2[0] = v1[3] * mul + add.x;
+                v2[1] = v1[2] * mul + add.y;
+                v2[2] = v1[1] * mul + add.z;
+                v2[3] = v1[0] * mul + add.w;
+            }
+            """,
+            defines={'TEST': 12, 'THING': '23'},
+        )
+        self.assertTrue("#define TEST 12" in shader.source)
+        self.assertTrue("#define THING 23" in shader.source)
+
+    def test_out_attributes(self):
+        """Ensure out attributes are proprely parsed"""
+        shader = program.ShaderSource(
+            program.VERTEX_SHADER,
+            "test.glsl",
+            """
+            #version 330
+            out vec2 out_pos;
+            out vec2 out_vel;
+            void main() {
+                out_pos = vec2(1.0);
+                out_vel = vec2(1.0);
+            }
+            """,
+        )
+        assert shader.find_out_attribs() == ['out_pos', 'out_vel']
+        # With layout qualifiers
+        shader = program.ShaderSource(
+            program.VERTEX_SHADER,
+            "test.glsl",
+            """
+            #version 330
+            layout(location = 0) out vec2 out_pos;
+            layout(location = 1) out vec2 out_vel;
+            void main() {
+                out_pos = vec2(1.0);
+                out_vel = vec2(1.0);
+            }
+            """,
+        )
+        assert shader.find_out_attribs() == ['out_pos', 'out_vel']
+
     def test_include(self):
         """Test #include preprocessors (recursive)"""
         def load_source(path):

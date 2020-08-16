@@ -15,6 +15,7 @@ Methods
 .. automethod:: WindowConfig.render
 .. automethod:: WindowConfig.resize
 .. automethod:: WindowConfig.close
+.. automethod:: WindowConfig.add_arguments
 .. automethod:: WindowConfig.key_event
 .. automethod:: WindowConfig.mouse_position_event
 .. automethod:: WindowConfig.mouse_press_event
@@ -26,6 +27,7 @@ Methods
 .. automethod:: WindowConfig.load_texture_array
 .. automethod:: WindowConfig.load_texture_cube
 .. automethod:: WindowConfig.load_program
+.. automethod:: WindowConfig.load_compute_shader
 .. automethod:: WindowConfig.load_text
 .. automethod:: WindowConfig.load_json
 .. automethod:: WindowConfig.load_binary
@@ -50,9 +52,13 @@ Attributes
    :annotation:
 .. autoattribute:: WindowConfig.cursor
    :annotation:
+.. autoattribute:: WindowConfig.clear_color
+   :annotation:
 .. autoattribute:: WindowConfig.samples
    :annotation:
 .. autoattribute:: WindowConfig.resource_dir
    :annotation:
 .. autoattribute:: WindowConfig.log_level
+   :annotation:
+.. autoattribute:: WindowConfig.argv
    :annotation:

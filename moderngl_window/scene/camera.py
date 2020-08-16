@@ -50,8 +50,8 @@ class Camera:
         self.right = Vector3([1.0, 0.0, 0.0])
         self.dir = Vector3([0.0, 0.0, -1.0])
         # Yaw and Pitch
-        self.yaw = -90.0
-        self.pitch = 0.0
+        self._yaw = -90.0
+        self._pitch = 0.0
 
         # World up vector
         self._up = Vector3([0.0, 1.0, 0.0])
@@ -72,7 +72,38 @@ class Camera:
             y (float): y position
             z (float): z position
         """
-        self.position = Vector3([x, y, z])
+        self.position = Vector3([float(x), float(y), float(z)])
+
+    def set_rotation(self, yaw, pitch) -> None:
+        """Set the rotation of the camera.
+
+        Args:
+            yaw (float): yaw rotation
+            pitch (float): pitch rotation
+        """
+        self._pitch = float(pitch)
+        self._yaw = float(yaw)
+        self._update_yaw_and_pitch()
+
+    @property
+    def yaw(self) -> float:
+        """float: The current yaw angle."""
+        return self._yaw
+
+    @yaw.setter
+    def yaw(self, value) -> None:
+        self._yaw = float(value)
+        self._update_yaw_and_pitch()
+
+    @property
+    def pitch(self) -> float:
+        """float: The current pitch angle."""
+        return self._pitch
+
+    @pitch.setter
+    def pitch(self, value) -> None:
+        self._pitch = float(value)
+        self._update_yaw_and_pitch()
 
     @property
     def matrix(self) -> numpy.ndarray:
@@ -366,8 +397,8 @@ class KeyboardCamera(Camera):
         dx *= self._mouse_sensitivity
         dy *= self._mouse_sensitivity
 
-        self.yaw -= dx
-        self.pitch += dy
+        self._yaw -= dx
+        self._pitch += dy
 
         if self.pitch > 85.0:
             self.pitch = 85.0
@@ -405,3 +436,145 @@ class KeyboardCamera(Camera):
             self.position -= self.up * self._velocity * t
 
         return self._gl_look_at(self.position, self.position + self.dir, self._up)
+
+
+class OrbitCamera(Camera):
+    """Camera controlled by the mouse to pan around the target.
+
+    The functions :py:function:`~camera.OrbitCamera.rot_state` and :py:function:`~camera.OrbitCamera.rot_state`
+    are used to update the rotation and zoom.
+
+    Creating a orbit camera:
+
+    .. code:: python
+
+        camera = OrbitCamera(
+            target=(0., 0., 0.),
+            radius=2.0
+            fov=75.0,
+            aspect_ratio=self.wnd.aspect_ratio,
+            near=0.1,
+            far=1000.0,
+        )
+
+    We can also interact with the belonging
+    :py:class:`~moderngl_window.opengl.projection.Projection3D` instance.
+
+    .. code:: python
+
+        # Update aspect ratio
+        camera.projection.update(aspect_ratio=1.0)
+
+        # Get projection matrix in bytes (f4)
+        camera.projection.tobytes()
+    """
+    def __init__(self, target=(0., 0., 0.), radius=2.0, angles=(45., -45.), **kwargs):
+        """Initialize the camera
+
+        Keyword Args:
+            target (float, float, float): Target point
+            radius (float): Radius
+            angles (float, float): angle_x and angle_y in degrees
+            fov (float): Field of view
+            aspect_ratio (float): Aspect ratio
+            near (float): near plane
+            far (float): far plane
+        """
+        # values for orbit camera
+        self.radius = radius  # radius in base units
+        self.angle_x, self.angle_y = angles  # angles in degrees
+        self.target = target  # camera target in base units
+        self.up = (0.0, 1.0, 0.0)  # camera up vector
+
+        self._mouse_sensitivity = 1.0
+        self._zoom_sensitivity = 1.0
+
+        super().__init__(**kwargs)
+
+    @property
+    def matrix(self) -> numpy.ndarray:
+        """numpy.ndarray: The current view matrix for the camera"""
+        return Matrix44.look_at(
+            (
+                cos(radians(self.angle_x)) * sin(radians(self.angle_y)) * self.radius + self.target[0],
+                cos(radians(self.angle_y)) * self.radius + self.target[1],
+                sin(radians(self.angle_x)) * sin(radians(self.angle_y)) * self.radius + self.target[2],
+            ),  # camera (eye) position, calculated from angles and radius
+            self.target,  # what to look at
+            self.up,  # camera up direction (change for rolling the camera)
+            dtype="f4",
+        )
+
+    @property
+    def angle_x(self) -> float:
+        """float: camera angle x in degrees.
+
+        This property can also be set::
+            camera.angle_x = 45.
+        """
+        return self._angle_x
+
+    @angle_x.setter
+    def angle_x(self, value: float):
+        """Set camera rotation_x in degrees."""
+        self._angle_x = value
+
+    @property
+    def angle_y(self) -> float:
+        """float: camera angle y in degrees.
+
+        This property can also be set::
+            camera.angle_y = 45.
+        """
+        return self._angle_y
+
+    @angle_y.setter
+    def angle_y(self, value: float):
+        """Set camera rotation_y in degrees."""
+        self._angle_y = value
+
+    @property
+    def mouse_sensitivity(self) -> float:
+        """float: Mouse sensitivity (rotation speed).
+
+        This property can also be set::
+            camera.mouse_sensitivity = 2.5
+        """
+        return self._mouse_sensitivity
+
+    @mouse_sensitivity.setter
+    def mouse_sensitivity(self, value: float):
+        self._mouse_sensitivity = value
+
+    @property
+    def zoom_sensitivity(self) -> float:
+        """float: Mousewheel zooming sensitivity (zoom speed).
+
+        This property can also be set::
+            camera.zoom_sensitivity = 2.5
+        """
+        return self._mouse_sensitivity
+
+    @zoom_sensitivity.setter
+    def zoom_sensitivity(self, value: float):
+        self._zoom_sensitivity = value
+
+    def rot_state(self, dx: float, dy: float) -> None:
+        """Update the rotation of the camera around the target point.
+
+        This is done by passing relative mouse change in the x and y axis (delta x, delta y)
+
+        Args:
+            dx: Relative mouse position change on x axis
+            dy: Relative mouse position change on y axis
+        """
+        self.angle_x += dx * self.mouse_sensitivity / 10.
+        self.angle_y += dy * self.mouse_sensitivity / 10.
+
+        # clamp the y angle to avoid weird rotations
+        self.angle_y = max(min(self.angle_y, -5.), -175.)
+
+    def zoom_state(self, y_offset: float) -> None:
+        # allow zooming in/out
+        self.radius -= y_offset * self._zoom_sensitivity
+        self.radius = max(1.0, self.radius)

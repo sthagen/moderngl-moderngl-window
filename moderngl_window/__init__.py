@@ -16,7 +16,7 @@ from moderngl_window.timers.clock import Timer
 from moderngl_window.conf import settings
 from moderngl_window.utils.module_loading import import_string
 
-__version__ = '2.1.1'
+__version__ = '2.2.3'
 
 IGNORE_DIRS = [
     '__pycache__',
@@ -158,10 +158,15 @@ def run_window_config(config_cls: WindowConfig, timer=None, args=None) -> None:
 
     Args:
         config_cls: The WindowConfig class to render
+    Keyword Args:
+        timer: A custom timer instance
         args: Override sys.args
     """
     setup_basic_logging(config_cls.log_level)
-    values = parse_args(args)
+    parser = create_parser()
+    config_cls.add_arguments(parser)
+    values = parse_args(args=args, parser=parser)
+    config_cls.argv = values
     window_cls = get_local_window_cls(values.window)
 
     # Calculate window size
@@ -186,7 +191,7 @@ def run_window_config(config_cls: WindowConfig, timer=None, args=None) -> None:
     )
     window.print_context_info()
     activate_context(window=window)
-    timer = Timer()
+    timer = timer or Timer()
     window.config = config_cls(ctx=window.ctx, wnd=window, timer=timer)
 
     timer.start()
@@ -194,9 +199,13 @@ def run_window_config(config_cls: WindowConfig, timer=None, args=None) -> None:
     while not window.is_closing:
         current_time, delta = timer.next_frame()
 
-        window.clear()
+        if window.config.clear_color is not None:
+            window.clear(*window.config.clear_color)
+        else:
+            window.use()
         window.render(current_time, delta)
-        window.swap_buffers()
+        if not window.is_closing:
+            window.swap_buffers()
 
     _, duration = timer.stop()
     window.destroy()
@@ -204,8 +213,8 @@ def run_window_config(config_cls: WindowConfig, timer=None, args=None) -> None:
         logger.info("Duration: {0:.2f}s @ {1:.2f} FPS".format(duration, window.frames / duration))
 
 
-def parse_args(args=None):
-    """Parse arguments from sys.argv"""
+def create_parser():
+    """Create an argparser parsing the standard arguments for WindowConfig"""
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
@@ -250,7 +259,19 @@ def parse_args(args=None):
         default=1.0,
         help="Multiplier for the window size making it easy scale the window",
     )
+    return parser
 
+
+def parse_args(args=None, parser=None):
+    """Parse arguments from sys.argv
+
+    Passing in your own argparser can be user to extend the parser.
+
+    Keyword Args:
+        args: override for sys.argv
+        parser: Supply your own argparser instance
+    """
+    parser = parser or create_parser()
     return parser.parse_args(args or sys.argv[1:])
 
 

@@ -13,10 +13,13 @@ from moderngl_window.meta import ProgramDescription
 from moderngl_window import geometry
 
 from .programs import (
-    ColorProgram,
     FallbackProgram,
+    VertexColorProgram,
+    ColorLightProgram,
     MeshProgram,
     TextureProgram,
+    TextureVertexColorProgram,
+    TextureLightProgram,
 )
 
 logger = logging.getLogger(__name__)
@@ -47,9 +50,26 @@ class Scene:
         self.diagonal_size = 1.0
 
         self.bbox_vao = geometry.bbox()
-        self.bbox_program = programs.load(
-            ProgramDescription(path='scene_default/bbox.glsl'),
-        )
+
+        if self.ctx.extra is None:
+            self.ctx.extra = {}
+
+        # Load bbox program and cache in the context
+        self.bbox_program = self.ctx.extra.get('DEFAULT_BBOX_PROGRAM')
+        if not self.bbox_program:
+            self.bbox_program = programs.load(
+                ProgramDescription(path='scene_default/bbox.glsl'),
+            )
+            self.ctx.extra['DEFAULT_BBOX_PROGRAM'] = self.bbox_program
+
+        # Load wireframe program and cache in the context
+        self.wireframe_program = self.ctx.extra.get('DEFAULT_WIREFRAME_PROGRAM')
+        if not self.wireframe_program:
+            self.wireframe_program = programs.load(
+                ProgramDescription(path='scene_default/wireframe.glsl'),
+            )
+            self.ctx.extra['DEFAULT_WIREFRAME_PROGRAM'] = self.wireframe_program
+
         self._matrix = matrix44.create_identity(dtype='f4')
 
     @property
@@ -88,13 +108,14 @@ class Scene:
 
         self.ctx.clear_samplers(0, 4)
 
-    def draw_bbox(self, projection_matrix=None, camera_matrix=None, children=True) -> None:
+    def draw_bbox(self, projection_matrix=None, camera_matrix=None, children=True, color=(0.75, 0.75, 0.75)) -> None:
         """Draw scene and mesh bounding boxes.
 
         Args:
             projection_matrix (ndarray): mat4 projection
             camera_matrix (ndarray): mat4 camera matrix
             children (bool): Will draw bounding boxes for meshes as well
+            color (tuple): Color of the bounding boxes
         """
         projection_matrix = projection_matrix.astype('f4')
         camera_matrix = camera_matrix.astype('f4')
@@ -105,7 +126,7 @@ class Scene:
         self.bbox_program["m_cam"].write(camera_matrix)
         self.bbox_program["bb_min"].write(self.bbox_min)
         self.bbox_program["bb_max"].write(self.bbox_max)
-        self.bbox_program["color"].value = (1.0, 0.0, 0.0)
+        self.bbox_program["color"].value = color
         self.bbox_vao.render(self.bbox_program)
 
         if not children:
@@ -115,15 +136,57 @@ class Scene:
         for node in self.root_nodes:
             node.draw_bbox(projection_matrix, camera_matrix, self.bbox_program, self.bbox_vao)
 
-    def apply_mesh_programs(self, mesh_programs=None) -> None:
+    def draw_wireframe(self, projection_matrix=None, camera_matrix=None, color=(0.75, 0.75, 0.75, 1.0)):
+        """Render the scene in wireframe mode.
+
+        Args:
+            projection_matrix (ndarray): mat4 projection
+            camera_matrix (ndarray): mat4 camera matrix
+            children (bool): Will draw bounding boxes for meshes as well
+            color (tuple): Color of the wireframes
+        """
+        projection_matrix = projection_matrix.astype('f4')
+        camera_matrix = camera_matrix.astype('f4')
+
+        self.wireframe_program["m_proj"].write(projection_matrix)
+        self.wireframe_program["m_model"].write(self._matrix)
+        self.wireframe_program["m_cam"].write(camera_matrix)
+        self.wireframe_program["color"] = color
+
+        # Draw bounding box for children
+        self.ctx.wireframe = True
+
+        for node in self.root_nodes:
+            node.draw_wireframe(projection_matrix, camera_matrix, self.wireframe_program)
+
+        self.ctx.wireframe = False
+
+    def apply_mesh_programs(self, mesh_programs=None, clear: bool = True) -> None:
         """Applies mesh programs to meshes.
         If not mesh programs are passed in we assign default ones.
 
         Args:
             mesh_programs (list): List of mesh programs to assign
+            clear (bool): Clear all assigned mesh programs
         """
+        global DEFAULT_PROGRAMS
+
+        if clear:
+            for mesh in self.meshes:
+                mesh.mesh_program = None
+
         if not mesh_programs:
-            mesh_programs = [ColorProgram(), TextureProgram(), FallbackProgram()]
+            mesh_programs = self.ctx.extra.get('DEFAULT_PROGRAMS')
+            if not mesh_programs:
+                mesh_programs = [
+                    TextureLightProgram(),
+                    TextureProgram(),
+                    VertexColorProgram(),
+                    TextureVertexColorProgram(),
+                    ColorLightProgram(),
+                    FallbackProgram(),
+                ]
+                self.ctx.extra['DEFAULT_PROGRAMS'] = mesh_programs
 
         for mesh in self.meshes:
             for mesh_prog in mesh_programs:
@@ -191,10 +254,22 @@ class Scene:
 
         return None
 
+    def release(self):
+        """Destroys the scene data and vertex buffers"""
+        self.destroy()
+
     def destroy(self) -> None:
         """Destroys the scene data and vertex buffers"""
         for mesh in self.meshes:
             mesh.vao.release()
+            # if mesh.mesh_program:
+            #     mesh.mesh_program.program.release()
+
+        for mat in self.materials:
+            mat.release()
+
+        self.meshes = []
+        self.root_nodes = []
 
     def __str__(self) -> str:
         return "<Scene: {}>".format(self.name)

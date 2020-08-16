@@ -1,7 +1,9 @@
+from argparse import ArgumentParser, Namespace
 from functools import wraps
 from pathlib import Path
 import logging
 import sys
+import weakref
 from typing import Any, Tuple, Type
 
 import moderngl
@@ -309,7 +311,10 @@ class BaseWindow:
 
             window.config = window_config_instance
         """
-        return self._config
+        if self._config is not None:
+            return self._config()
+
+        return None
 
     @property
     def vsync(self) -> bool:
@@ -406,7 +411,7 @@ class BaseWindow:
         self.mouse_scroll_event_func = getattr(config, 'mouse_scroll_event', dummy_func)
         self.unicode_char_entered_func = getattr(config, 'unicode_char_entered', dummy_func)
 
-        self._config = config
+        self._config = weakref.ref(config)
 
     @property
     def render_func(self):
@@ -434,7 +439,7 @@ class BaseWindow:
     @property
     def close_func(self):
         """callable: Get or set the close callable"""
-        return self._resize_func
+        return self._close_func
 
     @close_func.setter
     @require_callable
@@ -568,6 +573,7 @@ class BaseWindow:
     def close(self) -> None:
         """Signal for the window to close"""
         self._close = True
+        self.close_func()
 
     def use(self):
         """Bind the window's framebuffer"""
@@ -799,6 +805,20 @@ class WindowConfig:
         # Default value
         aspect_ratio = 16 / 9
     """
+    clear_color = (0.0, 0.0, 0.0, 0.0)
+    """
+    The color the active framebuffer is cleared with.
+    This attribute is expected to be in the form of ``(r, g, b, a)`` in the range ``[0.0, 1.0]``
+
+    If the value is `None` the screen will not be cleared every frame.
+
+    .. code:: python
+
+        # Default value
+        clear_color = (0.0, 0.0, 0.0, 0.0)
+        # Disable screen clearing
+        clear_color = None
+    """
     cursor = True
     """
     Determines if the mouse cursor should be visible inside the window.
@@ -839,6 +859,10 @@ class WindowConfig:
         # Default value
         log_level = logging.INFO
     """
+    argv = None  # type: Namespace
+    """
+    The parsed command line arguments.
+    """
     def __init__(self, ctx: moderngl.Context = None, wnd: BaseWindow = None, timer: BaseTimer = None, **kwargs):
         """Initialize the window config
 
@@ -871,6 +895,16 @@ class WindowConfig:
         """
         import moderngl_window
         moderngl_window.run_window_config(cls)
+
+    @classmethod
+    def add_arguments(cls, parser: ArgumentParser):
+        """Add arguments to default argument parser.
+        Add arguments using ``add_argument(..)``.
+
+        Args:
+            parser (ArgumentParser): The default argument parser.
+        """
+        pass
 
     def render(self, time: float, frame_time: float):
         """Renders the assigned effect
@@ -1092,7 +1126,8 @@ class WindowConfig:
             fragment_shader (str): Path to fragment shader
             tess_control_shader (str): Path to tessellation control shader
             tess_evaluation_shader (str): Path to tessellation eval shader
-            defines (dict): ``#define`` values to replace in the shader source
+            defines (dict): ``#define`` values to replace in the shader source.
+                            Example: ``{'VALUE1': 10, 'VALUE2': '3.1415'}``.
         Returns:
             moderngl.Program: The program instance
         """
@@ -1113,7 +1148,8 @@ class WindowConfig:
 
         Args:
             path (str): Path to a single glsl file
-            defines (dict): ``#define`` values to replace in the shader source
+            defines (dict): ``#define`` values to replace in the shader source.
+                            Example: ``{'VALUE1': 10, 'VALUE2': '3.1415'}``.
         Returns:
             moderngl.ComputeShader: The compute shader
         """
