@@ -1,6 +1,8 @@
 from typing import Tuple
 import glfw
 
+from PIL import Image
+
 from moderngl_window.context.base import BaseWindow
 from moderngl_window.context.glfw.keys import Keys
 
@@ -9,8 +11,9 @@ class Window(BaseWindow):
     """
     Window based on GLFW
     """
+
     #: Name of the window
-    name = 'glfw'
+    name = "glfw"
     #: GLFW specific key constants
     keys = Keys
 
@@ -41,16 +44,11 @@ class Window(BaseWindow):
 
         monitor = None
         if self.fullscreen:
-            monitor = glfw.get_primary_monitor()
-            mode = glfw.get_video_mode(monitor)
-            self._width, self._height = mode.size.width, mode.size.height
+            self._set_fullscreen(True)
 
-            glfw.window_hint(glfw.RED_BITS, mode.bits.red)
-            glfw.window_hint(glfw.GREEN_BITS, mode.bits.green)
-            glfw.window_hint(glfw.BLUE_BITS, mode.bits.blue)
-            glfw.window_hint(glfw.REFRESH_RATE, mode.refresh_rate)
-
-        self._window = glfw.create_window(self.width, self.height, self.title, monitor, None)
+        self._window = glfw.create_window(
+            self.width, self.height, self.title, monitor, None
+        )
         self._has_focus = True
 
         if not self._window:
@@ -59,7 +57,9 @@ class Window(BaseWindow):
 
         self.cursor = self._cursor
 
-        self._buffer_width, self._buffer_height = glfw.get_framebuffer_size(self._window)
+        self._buffer_width, self._buffer_height = glfw.get_framebuffer_size(
+            self._window
+        )
         glfw.make_context_current(self._window)
 
         if self.vsync:
@@ -79,6 +79,47 @@ class Window(BaseWindow):
 
         self.init_mgl_context()
         self.set_default_viewport()
+
+    def _set_fullscreen(self, value: bool) -> None:
+        monitor = glfw.get_primary_monitor()
+        mode = glfw.get_video_mode(monitor)
+        refresh_rate = mode.refresh_rate if self.vsync else glfw.DONT_CARE
+        self.resizable = not value
+        glfw.window_hint(glfw.RESIZABLE, self.resizable)
+
+        if value:
+            # enable fullscreen
+            self._non_fullscreen_size = self.width, self.height
+            self._non_fullscreen_position = self.position
+            glfw.set_window_monitor(
+                self._window,
+                monitor,
+                0,
+                0,
+                mode.size.width,
+                mode.size.height,
+                refresh_rate,
+            )
+
+            glfw.window_hint(glfw.RED_BITS, mode.bits.red)
+            glfw.window_hint(glfw.GREEN_BITS, mode.bits.green)
+            glfw.window_hint(glfw.BLUE_BITS, mode.bits.blue)
+            glfw.window_hint(glfw.REFRESH_RATE, mode.refresh_rate)
+
+        else:
+            # disable fullscreen
+            glfw.set_window_monitor(
+                self._window,
+                None,
+                *self._non_fullscreen_position,
+                *self._non_fullscreen_size,
+                refresh_rate
+            )
+
+        if self.vsync:
+            glfw.swap_interval(1)
+        else:
+            glfw.swap_interval(0)
 
     @property
     def size(self) -> Tuple[int, int]:
@@ -193,6 +234,10 @@ class Window(BaseWindow):
         self._modifiers.ctrl = mods & 2 == 2
         self._modifiers.alt = mods & 4 == 4
 
+    def _set_icon(self, icon_path) -> None:
+        image = Image.open(icon_path)
+        glfw.set_window_icon(self._window, 1, image)
+
     def glfw_key_event_callback(self, window, key, scancode, action, mods):
         """Key event callback for glfw.
         Translates and forwards keyboard event to :py:func:`keyboard_event`
@@ -287,7 +332,9 @@ class Window(BaseWindow):
             height: New height
         """
         self._width, self._height = width, height
-        self._buffer_width, self._buffer_height = glfw.get_framebuffer_size(self._window)
+        self._buffer_width, self._buffer_height = glfw.get_framebuffer_size(
+            self._window
+        )
         self.set_default_viewport()
 
         super().resize(self._buffer_width, self._buffer_height)

@@ -1,5 +1,5 @@
 from typing import Tuple
-from PyQt5 import QtCore, QtOpenGL, QtWidgets
+from PyQt5 import QtCore, QtOpenGL, QtWidgets, QtGui
 
 from moderngl_window.context.base import BaseWindow
 from moderngl_window.context.pyqt5.keys import Keys
@@ -16,8 +16,9 @@ class Window(BaseWindow):
     in Qt as well, this example can still be useful as a reference
     when creating your own window.
     """
+
     #: Name of the window
-    name = 'pyqt5'
+    name = "pyqt5"
     #: PyQt5 specific key constants
     keys = Keys
 
@@ -42,7 +43,7 @@ class Window(BaseWindow):
         # Configure multisampling if needed
         if self.samples > 1:
             gl.setSampleBuffers(True)
-            gl.setSamples(self.samples)
+            gl.setSamples(int(self.samples))
 
         # We need an application object, but we are bypassing the library's
         # internal event loop to avoid unnecessary work
@@ -63,8 +64,7 @@ class Window(BaseWindow):
         if self.resizable:
             # Ensure a valid resize policy when window is resizable
             size_policy = QtWidgets.QSizePolicy(
-                QtWidgets.QSizePolicy.Expanding,
-                QtWidgets.QSizePolicy.Expanding,
+                QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding,
             )
             self._widget.setSizePolicy(size_policy)
             self._widget.resize(self.width, self.height)
@@ -73,7 +73,11 @@ class Window(BaseWindow):
 
         # Center the window on the screen if in window mode
         if not self.fullscreen:
-            self._widget.move(QtWidgets.QDesktopWidget().rect().center() - self._widget.rect().center())
+            center_window_position = (
+                self.position[0] - self.width / 2,
+                self.position[1] - self.height / 2,
+            )
+            self._widget.move(*center_window_position)
 
         # Needs to be set before show()
         self._widget.resizeGL = self.resize
@@ -107,6 +111,12 @@ class Window(BaseWindow):
         self._buffer_height = self._height * self._widget.devicePixelRatio()
 
         self.set_default_viewport()
+
+    def _set_fullscreen(self, value: bool) -> None:
+        if value:
+            self._widget.showFullScreen()
+        else:
+            self._widget.showNormal()
 
     @property
     def size(self) -> Tuple[int, int]:
@@ -205,6 +215,9 @@ class Window(BaseWindow):
         self._modifiers.shift = bool(mods & QtCore.Qt.ShiftModifier)
         self._modifiers.ctrl = bool(mods & QtCore.Qt.ControlModifier)
         self._modifiers.alt = bool(mods & QtCore.Qt.AltModifier)
+
+    def _set_icon(self, icon_path: str) -> None:
+        self._widget.setWindowIcon(QtGui.QIcon(icon_path))
 
     def key_pressed_event(self, event) -> None:
         """Process Qt key press events forwarding them to standard methods
