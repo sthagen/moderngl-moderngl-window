@@ -27,6 +27,7 @@ setup(
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
     ],
     install_requires=[
         'moderngl<6',
@@ -43,7 +44,7 @@ setup(
         "pywavefront": ["pywavefront>=1.2.0,<2"],
         "trimesh": ["trimesh>=3.2.6,<4", "scipy>=1.3.2"],
         "tk": ["pyopengltk>=0.0.3"],
-        "pygame": ["pygame==2.0.0.dev10"],
+        "pygame": ["pygame~=2.0.0"],
     },
     project_urls={
         'Documentation': 'https://moderngl-window.readthedocs.io',
