@@ -115,6 +115,7 @@ class BaseWindow:
         self._samples = samples
         self._cursor = cursor
         self._exit_key = self.keys.ESCAPE
+        self._fs_key = self.keys.F11
 
         # Callback functions
         self._render_func = dummy_func
@@ -189,6 +190,28 @@ class BaseWindow:
     @title.setter
     def title(self, value: str):
         self._title = value
+
+    @property
+    def fullscreen_key(self) -> Any:
+        """Get or set the fullscreen toggle key for the window.
+
+        Pressing this key will toggle fullscreen for the window.
+
+        By default this is set to ``F11``, but this can be overridden or disabled::
+
+            # Default fullscreen key
+            window.fullscreen_key = window.keys.F11
+
+            # Set some other random fullscreen key
+            window.fullscreen_key = window.keys.F
+
+            # Disable the fullscreen key
+            window.fullscreen_key = None
+        """
+
+    @fullscreen_key.setter
+    def fullscreen_key(self, value: Any):
+        self._fs_key = value
 
     @property
     def exit_key(self) -> Any:
@@ -757,7 +780,7 @@ class BaseWindow:
         else:
             self._viewport = (0, 0, self._buffer_width, self._buffer_height)
 
-        self._ctx.viewport = self._viewport
+        self.fbo.viewport = self._viewport
 
     @property
     def gl_version_code(self) -> int:
@@ -1141,7 +1164,11 @@ class WindowConfig:
         anisotropy=1.0,
         **kwargs
     ) -> moderngl.Texture:
-        """Loads a 2D texture
+        """Loads a 2D texture.
+
+        If the path is relative the resource system is used expecting one or more
+        resource directories to be registered first. Absolute paths will attempt
+        to load the file directly.
 
         Args:
             path (str): Path to the texture relative to search directories
@@ -1182,6 +1209,10 @@ class WindowConfig:
         **kwargs
     ) -> moderngl.TextureArray:
         """Loads a texture array.
+
+        If the path is relative the resource system is used expecting one or more
+        resource directories to be registered first. Absolute paths will attempt
+        to load the file directly.
 
         Args:
             path (str): Path to the texture relative to search directories
@@ -1234,6 +1265,10 @@ class WindowConfig:
     ) -> moderngl.TextureCube:
         """Loads a texture cube.
 
+        If the path is relative the resource system is used expecting one or more
+        resource directories to be registered first. Absolute paths will attempt
+        to load the file directly.
+
         Keyword Args:
             pos_x (str): Path to texture representing positive x face
             pos_y (str): Path to texture representing positive y face
@@ -1281,11 +1316,16 @@ class WindowConfig:
         tess_control_shader=None,
         tess_evaluation_shader=None,
         defines: dict = None,
+        varyings: List[str] = None,
     ) -> moderngl.Program:
         """Loads a shader program.
 
         Note that `path` should only be used if all shaders are defined
         in the same glsl file separated by defines.
+
+        If the path is relative the resource system is used expecting one or more
+        resource directories to be registered first. Absolute paths will attempt
+        to load the file directly.
 
         Keyword Args:
             path (str): Path to a single glsl file
@@ -1296,6 +1336,7 @@ class WindowConfig:
             tess_evaluation_shader (str): Path to tessellation eval shader
             defines (dict): ``#define`` values to replace in the shader source.
                             Example: ``{'VALUE1': 10, 'VALUE2': '3.1415'}``.
+            varyings (List[str]): Out attribute names for transform shaders
         Returns:
             moderngl.Program: The program instance
         """
@@ -1308,6 +1349,7 @@ class WindowConfig:
                 tess_control_shader=tess_control_shader,
                 tess_evaluation_shader=tess_evaluation_shader,
                 defines=defines,
+                varyings=varyings,
             )
         )
 
@@ -1330,6 +1372,10 @@ class WindowConfig:
     def load_text(self, path: str, **kwargs) -> str:
         """Load a text file.
 
+        If the path is relative the resource system is used expecting one or more
+        resource directories to be registered first. Absolute paths will attempt
+        to load the file directly.
+
         Args:
             path (str): Path to the file relative to search directories
             **kwargs: Additional parameters to DataDescription
@@ -1347,6 +1393,10 @@ class WindowConfig:
     def load_json(self, path: str, **kwargs) -> dict:
         """Load a json file
 
+        If the path is relative the resource system is used expecting one or more
+        resource directories to be registered first. Absolute paths will attempt
+        to load the file directly.
+
         Args:
             path (str): Path to the file relative to search directories
             **kwargs: Additional parameters to DataDescription
@@ -1363,6 +1413,10 @@ class WindowConfig:
 
     def load_binary(self, path: str, **kwargs) -> bytes:
         """Load a file in binary mode.
+
+        If the path is relative the resource system is used expecting one or more
+        resource directories to be registered first. Absolute paths will attempt
+        to load the file directly.
 
         Args:
             path (str): Path to the file relative to search directories
@@ -1382,6 +1436,10 @@ class WindowConfig:
         self, path: str, cache=False, attr_names=AttributeNames, kind=None, **kwargs
     ) -> Scene:
         """Loads a scene.
+
+        If the path is relative the resource system is used expecting one or more
+        resource directories to be registered first. Absolute paths will attempt
+        to load the file directly.
 
         Keyword Args:
             path (str): Path to the file relative to search directories

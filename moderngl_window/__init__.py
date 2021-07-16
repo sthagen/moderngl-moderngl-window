@@ -23,6 +23,9 @@ IGNORE_DIRS = [
     "base",
 ]
 
+# Add new windows classes here to be recognized by the command line option --window
+WINDOW_CLASSES = ["glfw", "headless", "pygame2", "pyglet", "pyqt5", "pyside2", "sdl2", "tk"]
+
 OPTIONS_TRUE = ["yes", "on", "true", "t", "y", "1"]
 OPTIONS_FALSE = ["no", "off", "false", "f", "n", "0"]
 OPTIONS_ALL = OPTIONS_TRUE + OPTIONS_FALSE
@@ -129,15 +132,19 @@ def get_local_window_cls(window: str = None) -> Type[BaseWindow]:
 def find_window_classes() -> List[str]:
     """
     Find available window packages
-
     Returns:
         A list of available window packages
     """
-    return [
-        path.parts[-1]
-        for path in Path(__file__).parent.joinpath("context").iterdir()
-        if path.is_dir() and path.parts[-1] not in IGNORE_DIRS
-    ]
+    # In some environments we cannot rely on introspection
+    # and instead return a hardcoded list
+    try:
+        return [
+            path.parts[-1]
+            for path in Path(__file__).parent.joinpath("context").iterdir()
+            if path.is_dir() and path.parts[-1] not in IGNORE_DIRS
+        ]
+    except Exception:
+        return WINDOW_CLASSES
 
 
 def create_window_from_settings() -> BaseWindow:
@@ -201,6 +208,12 @@ def run_window_config(config_cls: WindowConfig, timer=None, args=None) -> None:
     timer = timer or Timer()
     window.config = config_cls(ctx=window.ctx, wnd=window, timer=timer)
 
+    # Swap buffers once before staring the main loop.
+    # This can trigged additional resize events reporting
+    # a more accurate buffer size
+    window.swap_buffers()
+    window.set_default_viewport()
+
     timer.start()
 
     while not window.is_closing:
@@ -208,8 +221,10 @@ def run_window_config(config_cls: WindowConfig, timer=None, args=None) -> None:
 
         if window.config.clear_color is not None:
             window.clear(*window.config.clear_color)
-        else:
-            window.use()
+
+        # Always bind the window framebuffer before calling render
+        window.use()
+
         window.render(current_time, delta)
         if not window.is_closing:
             window.swap_buffers()

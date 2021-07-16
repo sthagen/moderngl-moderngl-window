@@ -62,7 +62,7 @@ built in shortcuts to the resource loading system.
 
 .. code:: python
 
-    self.load_texture('background.png')
+    self.load_texture_2d('background.png')
     self.load_texture_array('tiles.png', layers=16)
     self.load_program('myprogram.glsl')
     self.load_text('textfile.txt')
@@ -83,6 +83,10 @@ provided in the :py:class:`~moderngl_window.context.base.window.WindowConfig`.
 
 If you need more than one search path for your resources, the
 :py:mod:`moderngl_window.resources` module has methods for this.
+
+Optionally an absolute path can be used to load a file at a
+specific location bypassing the entire resource system.
+This is not recommended, but is useful in some situations.
 
 Generic events and window types
 -------------------------------
