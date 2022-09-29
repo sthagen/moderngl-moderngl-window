@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.4.2
+
+* Allow toggling vsync and runtime for most windows
+* Allow rendering with imgui in headless mode
+* Fixed a crash when using fullscreen mode with glfw
+* Support moving OrbitCamera
+* Added SSAO example
+* Added `on_generic_event` callback for pygame user events
+* Fixed zoom sensitivity getter returning the wrong value
+* Fixed several typos
+* Bumped several dependencies to reasonable versions
+
+Thanks to @Rafale25, @n3onUser, @erikstrand (Erik Strand),
+@sheepman4267 and @dbs4261 (Daniel Simon) for contributions to this release.
+
 ## 2.4.1
 
 * Experimental support for ffmpeg capture

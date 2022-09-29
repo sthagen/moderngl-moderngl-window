@@ -124,6 +124,9 @@ class Window(BaseWindow):
         else:
             glfw.swap_interval(0)
 
+    def _set_vsync(self, value: bool) -> None:
+        glfw.swap_interval(value)
+
     @property
     def size(self) -> Tuple[int, int]:
         """Tuple[int, int]: current window size.
