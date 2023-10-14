@@ -9,7 +9,7 @@ import sys
 import weakref
 
 from pathlib import Path
-from typing import List, Type
+from typing import List, Type, Optional
 
 import moderngl
 from moderngl_window.context.base import WindowConfig, BaseWindow
@@ -18,7 +18,7 @@ from moderngl_window.conf import settings
 from moderngl_window.utils.module_loading import import_string
 from moderngl_window.utils.keymaps import KeyMapFactory, KeyMap, QWERTY, AZERTY  # noqa
 
-__version__ = "2.4.4"
+__version__ = "2.4.5"
 
 IGNORE_DIRS = [
     "__pycache__",
@@ -60,9 +60,8 @@ def setup_basic_logging(level: int):
 
 class ContextRefs:
     """Namespace for window/context references"""
-
-    WINDOW = None
-    CONTEXT = None
+    WINDOW: Optional[BaseWindow] = None
+    CONTEXT: Optional[moderngl.Context] = None
 
 
 def activate_context(window: BaseWindow = None, ctx: moderngl.Context = None):
