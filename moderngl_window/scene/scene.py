@@ -1,10 +1,11 @@
 """
 Wrapper for a loaded scene with properties.
 """
+
 from typing import TYPE_CHECKING
 import logging
 import numpy
-from pyrr import matrix44, vector3
+import glm
 
 import moderngl
 import moderngl_window as mglw
@@ -71,7 +72,7 @@ class Scene:
             )
             self.ctx.extra["DEFAULT_WIREFRAME_PROGRAM"] = self.wireframe_program
 
-        self._matrix = matrix44.create_identity(dtype="f4")
+        self._matrix = glm.mat4()
 
     @property
     def ctx(self) -> moderngl.Context:
@@ -87,15 +88,15 @@ class Scene:
         return self._matrix
 
     @matrix.setter
-    def matrix(self, matrix: numpy.ndarray):
-        self._matrix = matrix.astype("f4")
+    def matrix(self, matrix: glm.mat4):
+        self._matrix = matrix
         for node in self.root_nodes:
             node.calc_model_mat(self._matrix)
 
     def draw(
         self,
-        projection_matrix: numpy.ndarray = None,
-        camera_matrix: numpy.ndarray = None,
+        projection_matrix: glm.mat4 = None,
+        camera_matrix: glm.mat4 = None,
         time=0.0,
     ) -> None:
         """Draw all the nodes in the scene.
@@ -107,8 +108,8 @@ class Scene:
         """
         for node in self.root_nodes:
             node.draw(
-                projection_matrix=projection_matrix.astype("f4"),
-                camera_matrix=camera_matrix.astype("f4"),
+                projection_matrix=projection_matrix,
+                camera_matrix=camera_matrix,
                 time=time,
             )
 
@@ -129,8 +130,8 @@ class Scene:
             children (bool): Will draw bounding boxes for meshes as well
             color (tuple): Color of the bounding boxes
         """
-        projection_matrix = projection_matrix.astype("f4")
-        camera_matrix = camera_matrix.astype("f4")
+        projection_matrix = projection_matrix
+        camera_matrix = camera_matrix
 
         # Scene bounding box
         self.bbox_program["m_proj"].write(projection_matrix)
@@ -146,9 +147,7 @@ class Scene:
 
         # Draw bounding box for children
         for node in self.root_nodes:
-            node.draw_bbox(
-                projection_matrix, camera_matrix, self.bbox_program, self.bbox_vao
-            )
+            node.draw_bbox(projection_matrix, camera_matrix, self.bbox_program, self.bbox_vao)
 
     def draw_wireframe(
         self, projection_matrix=None, camera_matrix=None, color=(0.75, 0.75, 0.75, 1.0)
@@ -161,8 +160,8 @@ class Scene:
             children (bool): Will draw bounding boxes for meshes as well
             color (tuple): Color of the wireframes
         """
-        projection_matrix = projection_matrix.astype("f4")
-        camera_matrix = camera_matrix.astype("f4")
+        projection_matrix = projection_matrix
+        camera_matrix = camera_matrix
 
         self.wireframe_program["m_proj"].write(projection_matrix)
         self.wireframe_program["m_model"].write(self._matrix)
@@ -173,9 +172,7 @@ class Scene:
         self.ctx.wireframe = True
 
         for node in self.root_nodes:
-            node.draw_wireframe(
-                projection_matrix, camera_matrix, self.wireframe_program
-            )
+            node.draw_wireframe(projection_matrix, camera_matrix, self.wireframe_program)
 
         self.ctx.wireframe = False
 
@@ -227,14 +224,12 @@ class Scene:
         """Calculate scene bbox"""
         bbox_min, bbox_max = None, None
         for node in self.root_nodes:
-            bbox_min, bbox_max = node.calc_global_bbox(
-                matrix44.create_identity(dtype="f4"), bbox_min, bbox_max
-            )
+            bbox_min, bbox_max = node.calc_global_bbox(glm.mat4(), bbox_min, bbox_max)
 
         self.bbox_min = bbox_min
         self.bbox_max = bbox_max
 
-        self.diagonal_size = vector3.length(self.bbox_max - self.bbox_min)
+        self.diagonal_size = glm.length(self.bbox_max - self.bbox_min)
 
     def prepare(self) -> None:
         """prepare the scene for rendering.
@@ -244,7 +239,7 @@ class Scene:
         """
         self.apply_mesh_programs()
         # Recursively calculate model matrices
-        self.matrix = matrix44.create_identity(dtype="f4")
+        self.matrix = glm.mat4()
 
     def find_node(self, name: str = None) -> "Node":
         """Finds a :py:class:`~moderngl_window.scene.Node`

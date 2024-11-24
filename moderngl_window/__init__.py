@@ -1,6 +1,7 @@
 """
 General helper functions aiding in the boostrapping of this library.
 """
+
 # pylint: disable = redefined-outer-name, too-few-public-methods
 import argparse
 import logging
@@ -18,7 +19,7 @@ from moderngl_window.conf import settings
 from moderngl_window.utils.module_loading import import_string
 from moderngl_window.utils.keymaps import KeyMapFactory, KeyMap, QWERTY, AZERTY  # noqa
 
-__version__ = "2.4.6"
+__version__ = "3.0.0"
 
 IGNORE_DIRS = [
     "__pycache__",
@@ -26,7 +27,16 @@ IGNORE_DIRS = [
 ]
 
 # Add new windows classes here to be recognized by the command line option --window
-WINDOW_CLASSES = ["glfw", "headless", "pygame2", "pyglet", "pyqt5", "pyside2", "sdl2", "tk"]
+WINDOW_CLASSES = [
+    "glfw",
+    "headless",
+    "pygame2",
+    "pyglet",
+    "pyqt5",
+    "pyside2",
+    "sdl2",
+    "tk",
+]
 
 OPTIONS_TRUE = ["yes", "on", "true", "t", "y", "1"]
 OPTIONS_FALSE = ["no", "off", "false", "f", "n", "0"]
@@ -52,14 +62,13 @@ def setup_basic_logging(level: int):
         logger.setLevel(level)
         ch = logging.StreamHandler()
         ch.setLevel(logging.DEBUG)
-        ch.setFormatter(
-            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-        )
+        ch.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
         logger.addHandler(ch)
 
 
 class ContextRefs:
     """Namespace for window/context references"""
+
     WINDOW: Optional[BaseWindow] = None
     CONTEXT: Optional[moderngl.Context] = None
 
@@ -195,9 +204,7 @@ def run_window_config(config_cls: WindowConfig, timer=None, args=None) -> None:
         title=config_cls.title,
         size=size,
         fullscreen=config_cls.fullscreen or values.fullscreen,
-        resizable=values.resizable
-        if values.resizable is not None
-        else config_cls.resizable,
+        resizable=(values.resizable if values.resizable is not None else config_cls.resizable),
         visible=config_cls.visible,
         gl_version=config_cls.gl_version,
         aspect_ratio=config_cls.aspect_ratio,
@@ -239,11 +246,7 @@ def run_window_config(config_cls: WindowConfig, timer=None, args=None) -> None:
     _, duration = timer.stop()
     window.destroy()
     if duration > 0:
-        logger.info(
-            "Duration: {0:.2f}s @ {1:.2f} FPS".format(
-                duration, window.frames / duration
-            )
-        )
+        logger.info("Duration: {0:.2f}s @ {1:.2f} FPS".format(duration, window.frames / duration))
 
 
 def create_parser():
@@ -263,7 +266,10 @@ def create_parser():
         help="Open the window in fullscreen mode",
     )
     parser.add_argument(
-        "-vs", "--vsync", type=valid_bool, help="Enable or disable vsync",
+        "-vs",
+        "--vsync",
+        type=valid_bool,
+        help="Enable or disable vsync",
     )
     parser.add_argument(
         "-r",
@@ -292,7 +298,9 @@ def create_parser():
         help="Enable or disable displaying the mouse cursor",
     )
     parser.add_argument(
-        "--size", type=valid_window_size, help="Window size",
+        "--size",
+        type=valid_window_size,
+        help="Window size",
     )
     parser.add_argument(
         "--size_mult",
@@ -335,9 +343,7 @@ def valid_bool(value):
     if value in OPTIONS_FALSE:
         return False
 
-    raise argparse.ArgumentTypeError(
-        "Boolean value expected. Options: {}".format(OPTIONS_ALL)
-    )
+    raise argparse.ArgumentTypeError("Boolean value expected. Options: {}".format(OPTIONS_ALL))
 
 
 def valid_window_size(value):
@@ -369,4 +375,6 @@ def valid_window_size_multiplier(value):
     except ValueError:
         pass
 
-    raise argparse.ArgumentTypeError("Must be a positive int or float",)
+    raise argparse.ArgumentTypeError(
+        "Must be a positive int or float",
+    )

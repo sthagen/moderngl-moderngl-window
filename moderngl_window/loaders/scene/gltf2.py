@@ -8,7 +8,7 @@ from collections import namedtuple
 
 import numpy
 from PIL import Image
-from pyrr import Matrix44, quaternion
+import glm
 
 import moderngl
 import moderngl_window
@@ -144,16 +144,12 @@ class Loader(BaseLoader):
             magic = fd.read(4)
             if magic != GLTF_MAGIC_HEADER:
                 raise ValueError(
-                    "{} has incorrect header {} != {}".format(
-                        self.path, magic, GLTF_MAGIC_HEADER
-                    )
+                    "{} has incorrect header {} != {}".format(self.path, magic, GLTF_MAGIC_HEADER)
                 )
 
             version = struct.unpack("<I", fd.read(4))[0]
             if version != 2:
-                raise ValueError(
-                    f"{self.path} has unsupported version {version}"
-                )
+                raise ValueError(f"{self.path} has unsupported version {version}")
 
             # Total file size including headers
             _ = struct.unpack("<I", fd.read(4))[0]  # noqa
@@ -163,9 +159,7 @@ class Loader(BaseLoader):
             chunk_0_type = fd.read(4)
             if chunk_0_type != b"JSON":
                 raise ValueError(
-                    "Expected JSON chunk, not {} in file {}".format(
-                        chunk_0_type, self.path
-                    )
+                    "Expected JSON chunk, not {} in file {}".format(chunk_0_type, self.path)
                 )
 
             json_meta = fd.read(chunk_0_length).decode()
@@ -175,9 +169,7 @@ class Loader(BaseLoader):
             chunk_1_type = fd.read(4)
             if chunk_1_type != b"BIN\x00":
                 raise ValueError(
-                    "Expected BIN chunk, not {} in file {}".format(
-                        chunk_1_type, self.path
-                    )
+                    "Expected BIN chunk, not {} in file {}".format(chunk_1_type, self.path)
                 )
 
             self.gltf = GLTFMeta(
@@ -267,7 +259,7 @@ class Loader(BaseLoader):
         self.scene.nodes.append(node)
 
         if meta.matrix is not None:
-            node.matrix = Matrix44(value=meta.matrix)
+            node.matrix = glm.mat4(meta.matrix)
 
         if meta.mesh is not None:
             # Since we split up meshes with multiple primitives, this can be a list
@@ -309,31 +301,15 @@ class GLTFMeta:
 
         self.asset = GLTFAsset(data["asset"])
         self.materials = (
-            [GLTFMaterial(m) for m in data["materials"]]
-            if data.get("materials")
-            else []
+            [GLTFMaterial(m) for m in data["materials"]] if data.get("materials") else []
         )
-        self.images = (
-            [GLTFImage(i) for i in data["images"]] if data.get("images") else []
-        )
-        self.samplers = (
-            [GLTFSampler(s) for s in data["samplers"]] if data.get("samplers") else []
-        )
-        self.textures = (
-            [GLTFTexture(t) for t in data["textures"]] if data.get("textures") else []
-        )
-        self.scenes = (
-            [GLTFScene(s) for s in data["scenes"]] if data.get("scenes") else []
-        )
+        self.images = [GLTFImage(i) for i in data["images"]] if data.get("images") else []
+        self.samplers = [GLTFSampler(s) for s in data["samplers"]] if data.get("samplers") else []
+        self.textures = [GLTFTexture(t) for t in data["textures"]] if data.get("textures") else []
+        self.scenes = [GLTFScene(s) for s in data["scenes"]] if data.get("scenes") else []
         self.nodes = [GLTFNode(n) for n in data["nodes"]] if data.get("nodes") else []
-        self.meshes = (
-            [GLTFMesh(m, self.meta) for m in data["meshes"]]
-            if data.get("meshes")
-            else []
-        )
-        self.cameras = (
-            [GLTFCamera(c) for c in data["cameras"]] if data.get("cameras") else []
-        )
+        self.meshes = [GLTFMesh(m, self.meta) for m in data["meshes"]] if data.get("meshes") else []
+        self.cameras = [GLTFCamera(c) for c in data["cameras"]] if data.get("cameras") else []
         self.buffer_views = (
             [GLTFBufferView(i, v) for i, v in enumerate(data["bufferViews"])]
             if data.get("bufferViews")
@@ -387,7 +363,10 @@ class GLTFMeta:
 
     def check_version(self, required="2.0"):
         if not self.version == required:
-            msg = f"GLTF Format version is not 2.0. Version states '{self.version}' in file {self.path}"
+            msg = (
+                f"GLTF Format version is not 2.0. Version states '{self.version}' "
+                f"in file {self.path}"
+            )
             raise ValueError(msg)
 
     def check_extensions(self, supported):
@@ -500,9 +479,9 @@ class GLTFMesh:
                     self.name,
                     vao=vao,
                     attributes=attributes,
-                    material=materials[primitive.material]
-                    if primitive.material is not None
-                    else None,
+                    material=(
+                        materials[primitive.material] if primitive.material is not None else None
+                    ),
                     bbox_min=bbox_min,
                     bbox_max=bbox_max,
                 )
@@ -577,9 +556,7 @@ class VBOInfo:
         """Create the VBO"""
         dtype = NP_COMPONENT_DTYPE[self.component_type.value]
         data = numpy.frombuffer(
-            self.buffer.read(
-                byte_length=self.byte_length, byte_offset=self.byte_offset
-            ),
+            self.buffer.read(byte_length=self.byte_length, byte_offset=self.byte_offset),
             count=self.count * self.components,
             dtype=dtype,
         )
@@ -641,9 +618,7 @@ class GLTFAccessor:
         Get underlying buffer info for this accessor
         :return: buffer, byte_length, byte_offset, component_type, count
         """
-        buffer, byte_length, byte_offset = self.bufferView.info(
-            byte_offset=self.byteOffset
-        )
+        buffer, byte_length, byte_offset = self.bufferView.info(byte_offset=self.byteOffset)
         return (
             buffer,
             self.bufferView,
@@ -667,15 +642,14 @@ class GLTFBufferView:
 
     def read(self, byte_offset=0, dtype=None, count=0):
         data = self.buffer.read(
-            byte_offset=byte_offset + self.byteOffset, byte_length=self.byteLength,
+            byte_offset=byte_offset + self.byteOffset,
+            byte_length=self.byteLength,
         )
         vbo = numpy.frombuffer(data, count=count, dtype=dtype)
         return vbo
 
     def read_raw(self):
-        return self.buffer.read(
-            byte_length=self.byteLength, byte_offset=self.byteOffset
-        )
+        return self.buffer.read(byte_length=self.byteLength, byte_offset=self.byteOffset)
 
     def info(self, byte_offset=0):
         """
@@ -712,7 +686,7 @@ class GLTFBuffer:
             return
 
         if self.has_data_uri:
-            self.data = base64.b64decode(self.uri[self.uri.find(",") + 1:])
+            self.data = base64.b64decode(self.uri[self.uri.find(",") + 1 :])
             return
 
         with open(str(self.path / self.uri), "rb") as fd:
@@ -720,7 +694,7 @@ class GLTFBuffer:
 
     def read(self, byte_offset=0, byte_length=0):
         self.open()
-        return self.data[byte_offset:byte_offset + byte_length]
+        return self.data[byte_offset : byte_offset + byte_length]
 
 
 class GLTFScene:
@@ -741,24 +715,24 @@ class GLTFNode:
         self.scale = data.get("scale")
 
         if self.matrix:
-            self.matrix = Matrix44(self.matrix)
+            self.matrix = glm.mat4(*self.matrix)
         else:
-            self.matrix = Matrix44.identity()
+            self.matrix = glm.mat4()
 
         if self.translation is not None:
-            self.matrix = self.matrix * Matrix44.from_translation(self.translation)
+            self.matrix = self.matrix * glm.translate(glm.vec3(*self.translation))
 
         if self.rotation is not None:
-            quat = quaternion.create(
+            quat = glm.quat(
                 x=self.rotation[0],
                 y=self.rotation[1],
                 z=self.rotation[2],
                 w=self.rotation[3],
             )
-            self.matrix = self.matrix * Matrix44.from_quaternion(quat).transpose()
+            self.matrix = self.matrix * glm.mat4(quat)
 
         if self.scale is not None:
-            self.matrix = self.matrix * Matrix44.from_scale(self.scale)
+            self.matrix = self.matrix * glm.scale(self.scale)
 
     @property
     def has_children(self):
@@ -803,7 +777,7 @@ class GLTFImage:
             image = Image.open(io.BytesIO(self.bufferView.read_raw()))
         # Image is embedded
         elif self.uri and self.uri.startswith("data:"):
-            data = self.uri[self.uri.find(",") + 1:]
+            data = self.uri[self.uri.find(",") + 1 :]
             image = Image.open(io.BytesIO(base64.b64decode(data)))
             logger.info("Loading embedded image")
         else:
@@ -813,7 +787,11 @@ class GLTFImage:
 
         texture = t2d.Loader(
             TextureDescription(
-                label="gltf", image=image, flip=False, mipmap=True, anisotropy=16.0,
+                label="gltf",
+                image=image,
+                flip=False,
+                mipmap=True,
+                anisotropy=16.0,
             )
         ).load()
 

@@ -1,6 +1,7 @@
 # flake8: noqa E741
 from typing import Any
 
+
 class KeyModifiers:
     """Namespace for storing key modifiers"""
 
@@ -12,9 +13,7 @@ class KeyModifiers:
         return str(self)
 
     def __str__(self):
-        return "<KeyModifiers shift={} ctrl={} alt={}>".format(
-            self.shift, self.ctrl, self.alt
-        )
+        return "<KeyModifiers shift={} ctrl={} alt={}>".format(self.shift, self.ctrl, self.alt)
 
 
 class BaseKeys:
@@ -36,6 +35,9 @@ class BaseKeys:
     RIGHT: Any = "undefined"
     UP: Any = "undefined"
     DOWN: Any = "undefined"
+    LEFT_SHIFT: Any = "undefined"
+    RIGHT_SHIFT: Any = "undefined"
+    LEFT_CTRL: Any = "undefined"
 
     TAB: Any = "undefined"
     COMMA: Any = "undefined"

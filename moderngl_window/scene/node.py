@@ -1,9 +1,13 @@
 """
 Wrapper for a loaded mesh / vao with properties
 """
+
+from __future__ import annotations
+
 from typing import List, TYPE_CHECKING
-import numpy
-from pyrr import matrix44
+
+import glm
+import moderngl
 
 if TYPE_CHECKING:
     from moderngl_window.scene import Camera, Mesh
@@ -15,7 +19,13 @@ class Node:
     represents the scene tree.
     """
 
-    def __init__(self, name=None, camera=None, mesh=None, matrix=None):
+    def __init__(
+        self,
+        name: str | None = None,
+        camera: glm.mat4 | None = None,
+        mesh: Mesh | None = None,
+        matrix: glm.mat4 | None = None,
+    ):
         """Create a node.
 
         Keyword Args:
@@ -28,11 +38,11 @@ class Node:
         self._camera = camera
         self._mesh = mesh
         # Local node matrix
-        self._matrix = matrix.astype("f4") if matrix is not None else None
+        self._matrix = matrix
         # Global matrix
         self._matrix_global = None
 
-        self._children = []
+        self._children: list["Node"] = []
 
     @property
     def name(self) -> str:
@@ -40,7 +50,7 @@ class Node:
         return self._name
 
     @name.setter
-    def name(self, value: str):
+    def name(self, value: str) -> None:
         self._name = value
 
     @property
@@ -49,7 +59,7 @@ class Node:
         return self._mesh
 
     @mesh.setter
-    def mesh(self, value: "Mesh"):
+    def mesh(self, value: "Mesh") -> None:
         self._mesh = value
 
     @property
@@ -58,25 +68,25 @@ class Node:
         return self._camera
 
     @camera.setter
-    def camera(self, value):
+    def camera(self, value: "Camera") -> None:
         self._camera = value
 
     @property
-    def matrix(self) -> numpy.ndarray:
+    def matrix(self) -> glm.mat4:
         """numpy.ndarray: Note matrix (local)"""
         return self._matrix
 
     @matrix.setter
-    def matrix(self, value):
+    def matrix(self, value: glm.mat4) -> None:
         self._matrix = value
 
     @property
-    def matrix_global(self) -> numpy.ndarray:
+    def matrix_global(self) -> glm.mat4:
         """numpy.ndarray: The global node matrix containing transformations from parent nodes"""
         return self._matrix_global
 
     @matrix_global.setter
-    def matrix_global(self, value):
+    def matrix_global(self, value: glm.mat4) -> None:
         self._matrix_global = value
 
     @property
@@ -84,7 +94,7 @@ class Node:
         """list: List of children"""
         return self._children
 
-    def add_child(self, node):
+    def add_child(self, node: "Node") -> None:
         """Add a child to this node
 
         Args:
@@ -92,13 +102,13 @@ class Node:
         """
         self._children.append(node)
 
-    def draw(self, projection_matrix=None, camera_matrix=None, time=0):
+    def draw(self, projection_matrix: glm.mat4, camera_matrix: glm.mat4, time=0):
         """Draw node and children.
 
         Keyword Args:
-            projection_matrix (bytes): projection matrix
-            camera_matrix (bytes): camera_matrix
-            time (float): The current time
+            projection_matrix: projection matrix
+            camera_matrix: camera_matrix
+            time: The current time
         """
         if self._mesh:
             self._mesh.draw(
@@ -115,7 +125,13 @@ class Node:
                 time=time,
             )
 
-    def draw_bbox(self, projection_matrix, camera_matrix, program, vao):
+    def draw_bbox(
+        self,
+        projection_matrix: glm.mat4,
+        camera_matrix: glm.mat4,
+        program: moderngl.Program,
+        vao,
+    ):
         """Draw bounding box around the node and children.
 
         Keyword Args:
@@ -146,7 +162,7 @@ class Node:
         for child in self.children:
             child.draw_wireframe(projection_matrix, self._matrix_global, program)
 
-    def calc_global_bbox(self, view_matrix, bbox_min, bbox_max):
+    def calc_global_bbox(self, view_matrix: glm.mat4, bbox_min, bbox_max) -> tuple:
         """Recursive calculation of scene bbox.
 
         Keyword Args:
@@ -155,36 +171,32 @@ class Node:
             bbox_max: max bbox values
         """
         if self._matrix is not None:
-            view_matrix = matrix44.multiply(self._matrix, view_matrix)
+            view_matrix = self._matrix * view_matrix
 
         if self._mesh:
-            bbox_min, bbox_max = self._mesh.calc_global_bbox(
-                view_matrix, bbox_min, bbox_max
-            )
+            bbox_min, bbox_max = self._mesh.calc_global_bbox(view_matrix, bbox_min, bbox_max)
 
         for child in self._children:
             bbox_min, bbox_max = child.calc_global_bbox(view_matrix, bbox_min, bbox_max)
 
         return bbox_min, bbox_max
 
-    def calc_model_mat(self, model_matrix):
+    def calc_model_mat(self, model_matrix: glm.mat4) -> None:
         """Calculate the model matrix related to all parents.
 
         Args:
             model_matrix (numpy.ndarray): model matrix
         """
         if self._matrix is not None:
-            self._matrix_global = matrix44.multiply(self._matrix, model_matrix).astype(
-                "f4"
-            )
+            self._matrix_global = self._matrix * model_matrix
 
             for child in self._children:
                 child.calc_model_mat(self._matrix_global)
         else:
-            self._matrix_global = model_matrix.astype("f4")
+            self._matrix_global = model_matrix
 
             for child in self._children:
                 child.calc_model_mat(model_matrix)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<Node name={}>".format(self.name)

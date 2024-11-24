@@ -1,5 +1,5 @@
-from pyrr import matrix44
 import numpy
+import glm
 
 
 class Mesh:
@@ -40,9 +40,7 @@ class Mesh:
         self.bbox_max = bbox_max
         self.mesh_program = None
 
-    def draw(
-        self, projection_matrix=None, model_matrix=None, camera_matrix=None, time=0.0
-    ):
+    def draw(self, projection_matrix=None, model_matrix=None, camera_matrix=None, time=0.0):
         """Draw the mesh using the assigned mesh program
 
         Keyword Args:
@@ -79,9 +77,9 @@ class Mesh:
     def draw_wireframe(self, proj_matrix, model_matrix, program):
         """Render the mesh as wireframe.
 
-            proj_matrix: Projection matrix
-            model_matrix: View/model matrix
-            program: The moderngl.Program rendering the wireframe
+        proj_matrix: Projection matrix
+        model_matrix: View/model matrix
+        program: The moderngl.Program rendering the wireframe
         """
         program["m_proj"].write(proj_matrix)
         program["m_model"].write(model_matrix)
@@ -107,14 +105,12 @@ class Mesh:
             bbox_min, bbox_max: Combined bbox
         """
         # Copy and extend to vec4
-        bb1 = numpy.append(self.bbox_min[:], 1.0).astype("f4")
-        bb2 = numpy.append(self.bbox_max[:], 1.0).astype("f4")
+        bb1 = glm.vec4(*self.bbox_min[:], 1.0)
+        bb2 = glm.vec4(*self.bbox_max[:], 1.0)
 
         # Transform the bbox values
-        bmin = (matrix44.apply_to_vector(view_matrix, bb1),)
-        bmax = (matrix44.apply_to_vector(view_matrix, bb2),)
-        bmin = numpy.asarray(bmin, dtype="f4")[0]
-        bmax = numpy.asarray(bmax, dtype="f4")[0]
+        bmin = numpy.asarray(view_matrix * bb1, dtype="f4")
+        bmax = numpy.asarray(view_matrix * bb2, dtype="f4")
 
         # If a rotation happened there is an axis change and we have to ensure max-min is positive
         for i in range(3):
