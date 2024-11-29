@@ -76,7 +76,6 @@ class ModernglWindowMixin:
 
 
 class ModernGLRenderer(BaseOpenGLRenderer):
-
     VERTEX_SHADER_SRC = """
         #version 330
         uniform mat4 ProjMtx;
@@ -115,8 +114,6 @@ class ModernGLRenderer(BaseOpenGLRenderer):
 
         if not self.ctx:
             raise ValueError("Missing moderngl context")
-
-        assert isinstance(self.ctx, moderngl.Context)
 
         super().__init__()
 

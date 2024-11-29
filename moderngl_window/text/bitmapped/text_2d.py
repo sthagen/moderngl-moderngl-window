@@ -6,8 +6,7 @@ import moderngl
 import numpy
 
 from moderngl_window import resources
-from moderngl_window.meta import (DataDescription, ProgramDescription,
-                                  TextureDescription)
+from moderngl_window.meta import DataDescription, ProgramDescription, TextureDescription
 from moderngl_window.opengl.vao import VAO
 
 from .base import BaseText, FontMeta
@@ -16,7 +15,7 @@ resources.register_dir(Path(__file__).parent.resolve())
 
 
 class TextWriter2D(BaseText):
-    """Simple monspaced bitmapped text renderer"""
+    """Simple monospaced bitmapped text renderer"""
 
     def __init__(self) -> None:
         super().__init__()

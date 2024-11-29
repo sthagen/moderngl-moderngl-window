@@ -422,10 +422,10 @@ class GLTFMeta:
 class GLTFAsset:
     """Asset Information"""
 
-    def __init__(self, data: dict[str, str]):
-        self.version = data.get("version", "")
-        self.generator = data.get("generator", "")
-        self.copyright = data.get("copyright", "")
+    def __init__(self, data: dict[str, Any]):
+        self.version = data.get("version")
+        self.generator = data.get("generator")
+        self.copyright = data.get("copyright")
 
 
 class GLTFMesh:
@@ -434,14 +434,13 @@ class GLTFMesh:
         accessor: GLTFAccessor | None
 
         def __init__(self, data: dict[str, Any]):
-            self.attributes: dict[str, Any] = data.get("attributes", {})
-            self.indices = data.get("indices", 0)
+            self.attributes: dict[str, Any] = data.get("attributes")
+            self.indices = data.get("indices")
             self.mode = data.get("mode")
-            self.material = data.get("material", 0)
+            self.material = data.get("material")
             self.accessor = None
 
     def __init__(self, data: dict[str, Any], meta: SceneDescription):
-
         self.meta = meta
         self.name = data.get("name", "")
         self.primitives = [GLTFMesh.Primitives(p) for p in data["primitives"]]
@@ -462,7 +461,6 @@ class GLTFMesh:
         # Read all primitives as separate meshes for now
         # According to the spec they can have different materials and vertex format
         for primitive in self.primitives:
-
             vao = VAO(self.name, mode=primitive.mode or moderngl.TRIANGLES)
 
             # Index buffer
@@ -761,7 +759,7 @@ class GLTFNode:
                 z=self.rotation[2],
                 w=self.rotation[3],
             )
-            self.matrix = self.matrix * glm.mat4(quat)
+            self.matrix = self.matrix * glm.mat4_cast(quat)
 
         if self.scale is not None:
             self.matrix = self.matrix * glm.scale(self.scale)
@@ -778,7 +776,7 @@ class GLTFNode:
 
 class GLTFMaterial:
     def __init__(self, data: dict[str, Any]):
-        self.name = data["name"]
+        self.name = data.get("name")
         # Defaults to true if not defined
         self.doubleSided = data.get("doubleSided") or True
 
@@ -832,16 +830,16 @@ class GLTFImage:
 
 class GLTFTexture:
     def __init__(self, data: dict[str, int]):
-        self.sampler = data["sampler"]
-        self.source = data["source"]
+        self.sampler: Optional[int] = data.get("sampler")
+        self.source: Optional[int] = data.get("source")
 
 
 class GLTFSampler:
-    def __init__(self, data: dict[str, int]):
-        self.magFilter = data["magFilter"]
-        self.minFilter = data["minFilter"]
-        self.wrapS = data["wrapS"]
-        self.wrapT = data["wrapT"]
+    def __init__(self, data):
+        self.magFilter = data.get("magFilter")
+        self.minFilter = data.get("minFilter")
+        self.wrapS = data.get("wrapS")
+        self.wrapT = data.get("wrapT")
 
 
 class GLTFCamera:
