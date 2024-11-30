@@ -19,12 +19,7 @@ from moderngl_window.meta import (
     TextureDescription,
 )
 from moderngl_window.scene import Scene
-from moderngl_window.timers.base import BaseTimer
-
-try:
-    from pygame.event import Event
-except ModuleNotFoundError:
-    Event = Any
+from moderngl_window.timers import BaseTimer, Timer
 
 FuncAny = Callable[[Any], Any]
 
@@ -97,6 +92,7 @@ class BaseWindow:
         samples: int = 0,
         cursor: bool = True,
         backend: Optional[str] = None,
+        context_creation_func: Optional[Callable] = None,
         **kwargs: Any,
     ) -> None:
         """Initialize a window instance.
@@ -123,6 +119,11 @@ class BaseWindow:
                 Number of MSAA samples for the default framebuffer
             cursor:
                 Enable/disable displaying the cursor inside the window
+            backend:
+                The context backend to use. For example ``egl`` for EGL
+            context_creation_func:
+                A callable returning a ModernGL context. This can be used to
+                create a custom context.
         """
         # Window parameters
         self._title = title
@@ -138,6 +139,7 @@ class BaseWindow:
         self._cursor = cursor
         self._backend = backend
         self._headless = False
+        self._context_creation_func = context_creation_func
 
         self._exit_key = self.keys.ESCAPE
         self._fs_key = self.keys.F11
@@ -157,7 +159,7 @@ class BaseWindow:
         self._files_dropped_event_func: Callable[[int, int, list[Union[str, Path]]], None] = (
             dummy_func
         )
-        self._on_generic_event_func: Callable[[Event], None] = dummy_func
+        self._on_generic_event_func: Callable = dummy_func
 
         # Internal states
         self._ctx: moderngl.Context
@@ -188,7 +190,10 @@ class BaseWindow:
         Keyword Args:
             ctx: An optional custom ModernGL context
         """
-        self._ctx = moderngl.create_context(require=self.gl_version_code)
+        if self._context_creation_func:
+            self._ctx = self._context_creation_func()
+        if self._ctx is None:
+            self._ctx = moderngl.create_context(require=self.gl_version_code)
         err = self._ctx.error
         if err != "GL_NO_ERROR":
             logger.info("Consumed the following error during context creation: %s", err)
@@ -425,11 +430,8 @@ class BaseWindow:
 
     @property
     def config(self) -> Optional["WindowConfig"]:
-        """Get the current WindowConfig instance
+        """Get or det the current WindowConfig instance
 
-        DEPRECATED PROPERTY. This is not handled in `WindowConfig.__init__`
-
-        This property can also be set.
         Assigning a WindowConfig instance will automatically
         set up the necessary event callback methods::
 
@@ -897,7 +899,7 @@ class BaseWindow:
     @property
     def on_generic_event_func(
         self,
-    ) -> Union[Callable[[int, int, int, int], None], Callable[[Event], None]]:
+    ) -> Union[Callable[[int, int, int, int], None], None]:
         """
         callable: Get or set the on_generic_event callable
         used to funnel all non-processed events
@@ -906,7 +908,7 @@ class BaseWindow:
 
     @on_generic_event_func.setter
     @require_callable
-    def on_generic_event_func(self, func: Callable[[Event], None]) -> None:
+    def on_generic_event_func(self, func: Callable) -> None:
         self._on_generic_event_func = func
 
 
@@ -1075,6 +1077,17 @@ class WindowConfig:
         # Default value
         resource_dir = None
     """
+    hidden_window_framerate_limit = 30
+    """
+    The framerate limit for hidden windows. This is useful for windows that
+    should not render at full speed when hidden. On some platforms the
+    render loop can spike to thousands of frames per second when hidden
+    eating up battery life on laptops.
+
+    A value less than 0 will disable the framerate limit. Otherwise the
+    the value is a suggested limit in frames per second.
+    """
+
     log_level = logging.INFO
     """
     Sets the log level for this library using the standard `logging` module.
@@ -1114,7 +1127,7 @@ class WindowConfig:
 
         self.ctx = ctx
         self.wnd = wnd
-        self.timer = timer
+        self.timer: BaseTimer = timer or Timer()
 
         self.assign_event_callbacks()
 
@@ -1158,6 +1171,16 @@ class WindowConfig:
             parser (ArgumentParser): The default argument parser.
         """
         pass
+
+    @classmethod
+    def init_mgl_context(cls) -> Optional[moderngl.Context]:
+        """
+        Can be implemented to control the creation of the moderngl context.
+
+        The window calls this method first during context creation.
+        If not context is returned the window will create its own.
+        """
+        return None
 
     def on_render(self, time: float, frame_time: float) -> None:
         """Renders the assigned effect

@@ -2,11 +2,11 @@
 General helper functions aiding in the boostrapping of this library.
 """
 
-# pylint: disable = redefined-outer-name, too-few-public-methods
 import argparse
 import logging
 import os
 import sys
+import time
 import weakref
 from pathlib import Path
 from typing import Any, Optional
@@ -19,7 +19,7 @@ from moderngl_window.timers.clock import Timer
 from moderngl_window.utils.keymaps import AZERTY, QWERTY, KeyMap, KeyMapFactory  # noqa
 from moderngl_window.utils.module_loading import import_string
 
-__version__ = "3.0.0"
+__version__ = "3.0.1"
 
 IGNORE_DIRS = [
     "__pycache__",
@@ -197,6 +197,25 @@ def run_window_config(
         timer: A custom timer instance
         args: Override sys.args
     """
+    config = create_window_config_instance(config_cls, timer=timer, args=args)
+    run_window_config_instance(config)
+
+
+def create_window_config_instance(
+    config_cls: type[WindowConfig], timer: Optional[Timer] = None, args: Any = None
+) -> WindowConfig:
+    """
+    Create and initialize a instance of a WindowConfig class.
+    Quite a bit of boilerplate is required to create a WindowConfig instance
+    and this function aims to simplify that.
+
+    Args:
+        window_config: The WindowConfig class to create an instance of
+    Keyword Args:
+        kwargs: Arguments to pass to the WindowConfig constructor
+    Returns:
+        An instance of the WindowConfig class
+    """
     setup_basic_logging(config_cls.log_level)
     parser = create_parser()
     config_cls.add_arguments(parser)
@@ -225,6 +244,7 @@ def run_window_config(
         samples=values.samples if values.samples is not None else config_cls.samples,
         cursor=show_cursor if show_cursor is not None else True,
         backend=values.backend,
+        context_creation_func=config_cls.init_mgl_context,
     )
     window.print_context_info()
     activate_context(window=window)
@@ -237,15 +257,34 @@ def run_window_config(
     window._config = weakref.ref(config)
 
     # Swap buffers once before staring the main loop.
-    # This can trigged additional resize events reporting
+    # This can trigger additional resize events reporting
     # a more accurate buffer size
     window.swap_buffers()
     window.set_default_viewport()
+    return config
+
+
+def run_window_config_instance(config: WindowConfig) -> None:
+    """
+    Run an WindowConfig instance entering a blocking main loop.
+
+    Args:
+        window_config: The WindowConfig instance
+    """
+    window = config.wnd
+    timer = config.timer
 
     timer.start()
 
     while not window.is_closing:
         current_time, delta = timer.next_frame()
+
+        # Framerate  limit for hidden windows
+        if not window.visible and config.hidden_window_framerate_limit > 0:
+            expected_delta_time = 1.0 / config.hidden_window_framerate_limit
+            sleep_time = expected_delta_time - delta
+            if sleep_time > 0:
+                time.sleep(sleep_time)
 
         if config.clear_color is not None:
             window.clear(*config.clear_color)
@@ -254,13 +293,14 @@ def run_window_config(
         window.use()
 
         window.render(current_time, delta)
+
         if not window.is_closing:
             window.swap_buffers()
 
     _, duration = timer.stop()
     window.destroy()
     if duration > 0:
-        logger.info("Duration: {0:.2f}s @ {1:.2f} FPS".format(duration, window.frames / duration))
+        logger.info("Duration: {0:.2f}s @ {1:.2f} FPS".format(duration, timer.fps_average))
 
 
 def create_parser() -> argparse.ArgumentParser:

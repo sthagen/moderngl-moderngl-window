@@ -31,6 +31,16 @@ class BaseTimer:
     def time(self, value: float) -> None:
         raise NotImplementedError()
 
+    @property
+    def fps(self) -> float:
+        """Get the current frames per second."""
+        raise NotImplementedError()
+
+    @property
+    def fps_average(self) -> float:
+        """get the average fps since the timer was started"""
+        raise NotImplementedError()
+
     def next_frame(self) -> tuple[float, float]:
         """Get timer information for the next frame.
 
